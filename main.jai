@@ -328,25 +328,25 @@ TranspositionTable :: struct {
   V            : []value_t;
 
   TABLE_SIZE   :: 24; // store 2^TABLE_SIZE elements in the transpositiontbale
-  size_t       :: u64;
-  partial_key_t:: u32;
+  size_t       :: u32;
+  size         :size_t: #run next_prime(1 << TABLE_SIZE);
+  partial_key_t:: size_t;
   key_t        :: Position.position_t;
   value_t      :: u8;
-  size         :size_t: #run next_prime(1 << TABLE_SIZE);
 
   init :: (using t: TranspositionTable) {
-    K = NewArray(xx size, partial_key_t);
-    V = NewArray(xx size, value_t);
+    K = NewArray(size, partial_key_t);
+    V = NewArray(size, value_t);
   }
 
   put :: (using t: TranspositionTable, key: key_t, value: value_t) {
-    pos: size_t = index(key);
+    pos := index(key);
     K[pos] = cast,no_check(partial_key_t) key; // key is possibly trucated as key_t is possibly less than key_size bits.
     V[pos] = value;
   }
 
   get :: (using t: TranspositionTable, key: key_t) -> value_t {
-    pos: size_t = index(key);
+    pos := index(key);
     if(K[pos] == cast,no_check(partial_key_t)key) return V[pos]; // need to cast to key_t because key may be truncated due to size of key_t
     else return 0;
   }
@@ -360,7 +360,7 @@ TranspositionTable :: struct {
   }
   next_prime :: (n: u64) -> u64 { return ifx has_factor(n, 2, n) then next_prime(n + 1) else n; }
   log2 :: (n: u32) -> u32 {return ifx n <= 1 then 0 else log2(n / 2) + 1; }
-  index :: (key: key_t) -> size_t {return key % size; }
+  index :: (key: key_t) -> size_t {return xx (key % size); }
 }
 
 
