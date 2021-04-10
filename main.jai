@@ -13,8 +13,8 @@ main :: () {
   solver.init(solver);
   score := solver.solve(solver, p);
 
-  log("took this long:", get_time()-starttime);
-  log("Score is:", score);
+  log("Execution time:", get_time()-starttime, "seconds.");
+  log("score:", score);
   log("nodecount:", solver.nodeCount);
 }
 
@@ -76,10 +76,10 @@ Position :: struct {
   moves           :u64;        // number of moves played since the beinning of the game.
 
   position_t      :: u64;
-  WIDTH           :s32: 7;
-  HEIGHT          :s32: 6;
-  MIN_SCORE       :s32: -(WIDTH*HEIGHT) / 2 + 3;
-  MAX_SCORE       :s32: (WIDTH * HEIGHT + 1) / 2 - 3;
+  WIDTH           :: 7;
+  HEIGHT          :: 6;
+  MIN_SCORE       :: -(WIDTH*HEIGHT) / 2 + 3;
+  MAX_SCORE       :: (WIDTH * HEIGHT + 1) / 2 - 3;
 
   #assert(WIDTH < 10/*, "Board's width must be less than 10"*/);
   #assert(WIDTH * (HEIGHT + 1) <= size_of(position_t)*8/*, "Board does not fit into position_t bitmask"*/);
@@ -134,8 +134,8 @@ Position :: struct {
     for i: 1..width   mask |= cast(position_t)1 << ( (i-1) * (height+1) );
     return mask;
   }
-  bottom_mask:position_t : #run make_bottom_mask(WIDTH, HEIGHT);
-  board_mask:position_t : bottom_mask * ((1 << HEIGHT) - 1);
+  bottom_mask :position_t: #run make_bottom_mask(WIDTH, HEIGHT);
+  board_mask  :position_t: bottom_mask * ((1 << HEIGHT) - 1);
 
   compute_winning_position :: (position:position_t, mask:position_t) -> position_t {
     // vertical;
@@ -171,20 +171,22 @@ Position :: struct {
 
 
 
-
-
-
 Solver :: struct {
   transTable : TranspositionTable;
-  nodeCount  :u64; // counter of explored nodes.
-  columnOrder:[Position.WIDTH]int; // column exploration order
+  nodeCount  : u64; // counter of explored nodes.
+
+  columnOrder :[Position.WIDTH]u8: #run () -> [Position.WIDTH]u8 { // column exploration order
+    columnOrder: [Position.WIDTH]u8;
+    for i: 0..Position.WIDTH-1
+      columnOrder[i] = cast(u8)(Position.WIDTH / 2 + (1 - 2 * (i % 2)) * (i + 1) / 2);
+    return columnOrder; // example for Position.WIDTH=7: columnOrder = {3, 4, 2, 5, 1, 6, 0}
+  }();
+
+  // // column exploration order // example for Position.WIDTH=7: columnOrder = {3, 4, 2, 5, 1, 6, 0}
+  // columnOrder :[Position.WIDTH]u8: #run forx i: 0..Position.WIDTH-1  cast(u8)(Position.WIDTH / 2 + (1 - 2 * (i % 2)) * (i + 1) / 2);
 
   init :: (using s:Solver) {
     transTable.init(transTable);
-
-    // initialize the column exploration order, starting with center columns
-    // example for WIDTH=7: columnOrder = {3, 4, 2, 5, 1, 6, 0}
-    for i: 0..Position.WIDTH-1      columnOrder[i] = Position.WIDTH / 2 + (1 - 2 * (i % 2)) * (i + 1) / 2;
   }
 
   solve :: (using s:Solver, P:Position, weak:bool=false) -> int {
@@ -329,7 +331,7 @@ TranspositionTable :: struct {
 
   TABLE_SIZE   :: 24; // store 2^TABLE_SIZE elements in the transpositiontbale
   size_t       :: u32;
-  size         :size_t: #run next_prime(1 << TABLE_SIZE);
+  size         :: #run next_prime(1 << TABLE_SIZE);
   partial_key_t:: size_t;
   key_t        :: Position.position_t;
   value_t      :: u8;
@@ -341,7 +343,7 @@ TranspositionTable :: struct {
 
   put :: (using t: TranspositionTable, key: key_t, value: value_t) {
     pos := index(key);
-    K[pos] = cast,no_check(partial_key_t) key; // key is possibly trucated as key_t is possibly less than key_size bits.
+    K[pos] = cast,no_check(partial_key_t)key; // key is possibly trucated as key_t is possibly less than key_size bits.
     V[pos] = value;
   }
 
@@ -351,16 +353,15 @@ TranspositionTable :: struct {
     else return 0;
   }
 
-
-  med :: (min: u64, max: u64) -> u64 { return (min + max) / 2; }
+  index      :: (key: key_t) -> size_t {return xx (key % size); }
+  med        :: (min: u64, max: u64) -> u64 { return (min + max) / 2; }
+  // log2       :: (n: u32) -> u32 {return ifx n <= 1 then 0 else log2(n / 2) + 1; }
+  next_prime :: (n: u64) -> u64 { return ifx has_factor(n, 2, n) then next_prime(n + 1) else n; }
   has_factor :: (n: u64, min: u64, max: u64) -> bool {
     return ifx min * min > n then false else
            ifx min + 1 >= max then n % min == 0 else
            has_factor(n, min, med(min, max)) || has_factor(n, med(min, max), max);
   }
-  next_prime :: (n: u64) -> u64 { return ifx has_factor(n, 2, n) then next_prime(n + 1) else n; }
-  log2 :: (n: u32) -> u32 {return ifx n <= 1 then 0 else log2(n / 2) + 1; }
-  index :: (key: key_t) -> size_t {return xx (key % size); }
 }
 
 
